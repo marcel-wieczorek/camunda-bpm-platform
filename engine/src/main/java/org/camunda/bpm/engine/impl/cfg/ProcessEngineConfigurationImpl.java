@@ -60,8 +60,6 @@ import org.camunda.bpm.engine.impl.RuntimeServiceImpl;
 import org.camunda.bpm.engine.impl.ServiceImpl;
 import org.camunda.bpm.engine.impl.TaskServiceImpl;
 import org.camunda.bpm.engine.impl.application.ProcessApplicationManager;
-import org.camunda.bpm.engine.impl.audit.handler.AuditEventHandler;
-import org.camunda.bpm.engine.impl.audit.handler.DbAuditEventHandler;
 import org.camunda.bpm.engine.impl.bpmn.data.ItemInstance;
 import org.camunda.bpm.engine.impl.bpmn.deployer.BpmnDeployer;
 import org.camunda.bpm.engine.impl.bpmn.parser.BpmnParseListener;
@@ -90,7 +88,10 @@ import org.camunda.bpm.engine.impl.form.FormTypes;
 import org.camunda.bpm.engine.impl.form.JuelFormEngine;
 import org.camunda.bpm.engine.impl.form.LongFormType;
 import org.camunda.bpm.engine.impl.form.StringFormType;
-import org.camunda.bpm.engine.impl.history.handler.HistoryParseListener;
+import org.camunda.bpm.engine.impl.history.handler.DbHistoryEventHandler;
+import org.camunda.bpm.engine.impl.history.handler.HistoryEventHandler;
+import org.camunda.bpm.engine.impl.history.parser.HistoryParseListener;
+import org.camunda.bpm.engine.impl.history.producer.HistoryEventProducerFactory;
 import org.camunda.bpm.engine.impl.interceptor.CommandContextFactory;
 import org.camunda.bpm.engine.impl.interceptor.CommandExecutor;
 import org.camunda.bpm.engine.impl.interceptor.CommandExecutorImpl;
@@ -312,7 +313,9 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
   
   protected CorrelationHandler correlationHandler;
   
-  protected AuditEventHandler auditEventHandler;
+  protected HistoryEventProducerFactory historyEventProducerFactory;
+
+  protected HistoryEventHandler historyEventHandler;
     
   // buildProcessEngine ///////////////////////////////////////////////////////
   
@@ -325,6 +328,8 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
   
   protected void init() {
     initHistoryLevel();
+    initHistoryEventProducerFactory();
+    initHistoryEventHandler();
     initExpressionManager();
     initVariableTypes();
     initBeans();
@@ -350,7 +355,6 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
     initFailedJobCommandFactory();
     initProcessApplicationManager();
     initCorrelationHandler();
-    initAuditEventHandler();
   }
 
   // failedJobCommandFactory ////////////////////////////////////////////////////////
@@ -728,7 +732,7 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
   protected List<BpmnParseListener> getDefaultBPMNParseListeners() {
     List<BpmnParseListener> defaultListeners = new ArrayList<BpmnParseListener>();
         if (historyLevel>=ProcessEngineConfigurationImpl.HISTORYLEVEL_ACTIVITY) {
-      defaultListeners.add(new HistoryParseListener(historyLevel));
+      defaultListeners.add(new HistoryParseListener(historyLevel, historyEventProducerFactory));
     }
     return defaultListeners;
   }
@@ -1000,11 +1004,17 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
     
   }
   
-  // audit event handler /////////////////////////////////////////////////////
+  // history handlers /////////////////////////////////////////////////////
   
-  protected void initAuditEventHandler() {
-    if(auditEventHandler == null) {
-      auditEventHandler = new DbAuditEventHandler();
+  protected void initHistoryEventProducerFactory() {
+    if(historyEventProducerFactory == null) {
+      historyEventProducerFactory = new HistoryEventProducerFactory();
+    }
+  }
+  
+  protected void initHistoryEventHandler() {
+    if(historyEventHandler == null) {
+      historyEventHandler = new DbHistoryEventHandler();
     }
   }
 
@@ -1787,13 +1797,22 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
     this.correlationHandler = correlationHandler;
   }
 
-  public ProcessEngineConfigurationImpl setAuditEventHandler(AuditEventHandler auditEventHandler) {
-    this.auditEventHandler = auditEventHandler;
+  public ProcessEngineConfigurationImpl setHistoryEventHandler(HistoryEventHandler historyEventHandler) {
+    this.historyEventHandler = historyEventHandler;
     return this;
   }
   
-  public AuditEventHandler getAuditEventHandler() {
-    return auditEventHandler;
+  public HistoryEventHandler getHistoryEventHandler() {
+    return historyEventHandler;
+  }
+  
+  public ProcessEngineConfigurationImpl setHistoryEventProducerFactory(HistoryEventProducerFactory historyEventProducerFactory) {
+    this.historyEventProducerFactory = historyEventProducerFactory;
+    return this;
+  }
+  
+  public HistoryEventProducerFactory getHistoryEventProducerFactory() {
+    return historyEventProducerFactory;
   }
   
 }
