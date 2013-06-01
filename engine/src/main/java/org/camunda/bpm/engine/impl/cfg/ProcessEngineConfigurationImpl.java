@@ -92,6 +92,8 @@ import org.camunda.bpm.engine.impl.history.handler.DbHistoryEventHandler;
 import org.camunda.bpm.engine.impl.history.handler.HistoryEventHandler;
 import org.camunda.bpm.engine.impl.history.parser.HistoryParseListener;
 import org.camunda.bpm.engine.impl.history.producer.HistoryEventProducerFactory;
+import org.camunda.bpm.engine.impl.incident.FailedJobIncidentHandler;
+import org.camunda.bpm.engine.impl.incident.IncidentHandler;
 import org.camunda.bpm.engine.impl.interceptor.CommandContextFactory;
 import org.camunda.bpm.engine.impl.interceptor.CommandExecutor;
 import org.camunda.bpm.engine.impl.interceptor.CommandExecutorImpl;
@@ -128,6 +130,7 @@ import org.camunda.bpm.engine.impl.persistence.entity.HistoricTaskInstanceManage
 import org.camunda.bpm.engine.impl.persistence.entity.HistoricVariableInstanceManager;
 import org.camunda.bpm.engine.impl.persistence.entity.IdentityInfoManager;
 import org.camunda.bpm.engine.impl.persistence.entity.IdentityLinkManager;
+import org.camunda.bpm.engine.impl.persistence.entity.IncidentManager;
 import org.camunda.bpm.engine.impl.persistence.entity.JobManager;
 import org.camunda.bpm.engine.impl.persistence.entity.MembershipManager;
 import org.camunda.bpm.engine.impl.persistence.entity.ProcessDefinitionManager;
@@ -252,6 +255,12 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
   protected IdGenerator idGenerator;
   protected DataSource idGeneratorDataSource;
   protected String idGeneratorDataSourceJndiName;
+  
+  // INCIDENT HANDLER /////////////////////////////////////////////////////////
+  
+  protected Map<String, IncidentHandler> incidentHandlers;
+  protected List<IncidentHandler> customIncidentHandlers;
+  
 
   // OTHER ////////////////////////////////////////////////////////////////////
   protected List<FormEngine> customFormEngines;
@@ -355,6 +364,7 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
     initFailedJobCommandFactory();
     initProcessApplicationManager();
     initCorrelationHandler();
+    initIncidentHandlers();
   }
 
   // failedJobCommandFactory ////////////////////////////////////////////////////////
@@ -362,6 +372,22 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
   protected void initFailedJobCommandFactory() {
     if (failedJobCommandFactory == null) {
       failedJobCommandFactory = new DefaultFailedJobCommandFactory();
+    }
+  }
+  
+  // incident handlers /////////////////////////////////////////////////////////////
+  
+  protected void initIncidentHandlers() {
+    if (incidentHandlers == null) {
+      incidentHandlers = new HashMap<String, IncidentHandler>();
+      
+      FailedJobIncidentHandler failedJobIncidentHandler = new FailedJobIncidentHandler();
+      incidentHandlers.put(failedJobIncidentHandler.getIncidentHandlerType(), failedJobIncidentHandler);
+    }
+    if(customIncidentHandlers != null) {
+      for (IncidentHandler incidentHandler : customIncidentHandlers) {
+        incidentHandlers.put(incidentHandler.getIncidentHandlerType(), incidentHandler);        
+      }
     }
   }
 
@@ -601,6 +627,7 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
           properties.put("limitAfter" , DbSqlSessionFactory.databaseSpecificLimitAfterStatements.get(databaseType));
           properties.put("limitBetween" , DbSqlSessionFactory.databaseSpecificLimitBetweenStatements.get(databaseType));
           properties.put("orderBy" , DbSqlSessionFactory.databaseSpecificOrderByStatements.get(databaseType));
+          properties.put("limitBeforeNativeQuery" , DbSqlSessionFactory.databaseSpecificLimitBeforeNativeQueryStatements.get(databaseType));
         }
         XMLConfigBuilder parser = new XMLConfigBuilder(reader,"", properties);
         Configuration configuration = parser.getConfiguration();
@@ -662,6 +689,7 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
       addSessionFactory(new GenericManagerFactory(VariableInstanceManager.class));
       addSessionFactory(new GenericManagerFactory(EventSubscriptionManager.class));
       addSessionFactory(new GenericManagerFactory(StatisticsManager.class));
+      addSessionFactory(new GenericManagerFactory(IncidentManager.class));
     }
     if (customSessionFactories!=null) {
       for (SessionFactory sessionFactory: customSessionFactories) {
@@ -1797,6 +1825,27 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
     this.correlationHandler = correlationHandler;
   }
 
+  public IncidentHandler getIncidentHandler(String incidentType) {
+    return incidentHandlers.get(incidentType);
+  }
+  
+  public Map<String, IncidentHandler> getIncidentHandlers() {
+    return incidentHandlers;
+  }
+
+  public void setIncidentHandlers(Map<String, IncidentHandler> incidentHandlers) {
+    this.incidentHandlers = incidentHandlers;
+  }
+
+  public List<IncidentHandler> getCustomIncidentHandlers() {
+    return customIncidentHandlers;
+  }
+
+  public void setCustomIncidentHandlers(List<IncidentHandler> customIncidentHandlers) {
+    this.customIncidentHandlers = customIncidentHandlers;
+  }
+  
+
   public ProcessEngineConfigurationImpl setHistoryEventHandler(HistoryEventHandler historyEventHandler) {
     this.historyEventHandler = historyEventHandler;
     return this;
@@ -1815,4 +1864,5 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
     return historyEventProducerFactory;
   }
   
+
 }

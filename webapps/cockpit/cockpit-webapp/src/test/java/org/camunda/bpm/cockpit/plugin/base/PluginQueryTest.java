@@ -27,7 +27,6 @@ import org.junit.Test;
  */
 public class PluginQueryTest extends AbstractCockpitPluginTest {
 
-
   @Test
   public void testCustomQuery() {
 

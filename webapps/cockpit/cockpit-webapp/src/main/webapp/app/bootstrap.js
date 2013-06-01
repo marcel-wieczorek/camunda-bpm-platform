@@ -2,9 +2,9 @@
  * bootstrap script of the cockpit application
  */
 
-(function(document, require) {
+(function(document, window, require) {
 
-  var pluginPackages = PLUGIN_PACKAGES || [];
+  var pluginPackages = window.PLUGIN_PACKAGES || [];
 
   require({
     baseUrl: '../',
@@ -37,10 +37,40 @@
     ].concat(pluginPackages)
   });
 
+  var APP_NAME = 'cockpit';
+
+  /**
+   *
+   * @param {string} name the application name
+   *
+   * @see http://stackoverflow.com/questions/15499997/how-to-use-angular-scenario-with-requirejs
+   */
+  function ensureScenarioCompatibility() {
+
+    var html = document.getElementsByTagName('html')[0];
+
+    html.setAttribute('ng-app', APP_NAME);
+    html.dataset.ngApp = APP_NAME;
+
+    if (top !== window) {
+      window.parent.postMessage({ type: 'loadamd' }, '*');
+    }
+  }
+
+  /**
+   * Bootstrap the angular application
+   */
+  function bootstrapApp(angular) {
+    angular.bootstrap(document, [ APP_NAME ]);
+
+    // ensure compatibility with scenario runner
+    ensureScenarioCompatibility();
+  }
+
   require([ 'angular', 'angular-resource', 'ngDefine', 'bootstrap' ], function(angular) {
-    require([ 'cockpit', 'domReady!' ], function() {
-      angular.bootstrap(document, ['cockpit']);
+    require([ APP_NAME, 'domReady!' ], function() {
+      bootstrapApp(angular);
     });
   });
 
-})(document, require);
+})(document, window || this, require);

@@ -76,6 +76,7 @@ public class ExecutionEntity extends VariableScopeImpl implements ActivityExecut
   protected static final int EVENT_SUBSCRIPTIONS_STATE_BIT = 1;
   protected static final int TASKS_STATE_BIT = 2;
   protected static final int JOBS_STATE_BIT = 3;
+  protected static final int INCIDENT_STATE_BIT = 4;
   
   // current position /////////////////////////////////////////////////////////
   
@@ -108,6 +109,9 @@ public class ExecutionEntity extends VariableScopeImpl implements ActivityExecut
   
   protected StartingExecution startingExecution;
   
+  /** the unique id of the current activity instance */
+  protected String activityInstanceId;
+  
   // state/type of execution ////////////////////////////////////////////////// 
   
   /** indicates if this execution represents an active path of execution.
@@ -136,6 +140,7 @@ public class ExecutionEntity extends VariableScopeImpl implements ActivityExecut
   protected List<EventSubscriptionEntity> eventSubscriptions;  
   protected List<JobEntity> jobs;
   protected List<TaskEntity> tasks;
+  protected List<IncidentEntity> incidents;
   protected int cachedEntityState;
   
   // cascade deletion ////////////////////////////////////////////////////////
@@ -312,6 +317,7 @@ public class ExecutionEntity extends VariableScopeImpl implements ActivityExecut
     eventSubscriptions = new ArrayList<EventSubscriptionEntity>();
     jobs = new ArrayList<JobEntity>();
     tasks = new ArrayList<TaskEntity>();
+    incidents = new ArrayList<IncidentEntity>();
     
     // Cached entity-state initialized to null, all bits are zore, indicating NO entities present
     cachedEntityState = 0;
@@ -725,17 +731,92 @@ public class ExecutionEntity extends VariableScopeImpl implements ActivityExecut
     }
   }
 
-  public void setActivity(ActivityImpl activity) {
-    this.activity = activity;
-    if (activity != null) {
-      this.activityId = activity.getId();
-      this.activityName = (String) activity.getProperty("name");
-    } else {
+  public void setActivity(ActivityImpl newActivity) {
+    ActivityImpl currentAct = this.activity;
+    
+    if (newActivity == null || (currentAct != null && newActivity.contains(currentAct))) {
+      leaveActivityInstance();
+    }
+    this.activity = newActivity;
+    
+    if (newActivity != null) {      
+      this.activityId = newActivity.getId();
+      this.activityName = (String) newActivity.getProperty("name");
+      
+      if(currentAct != newActivity) {
+        // we enter a new activity instance
+        enterActivityInstance();
+      }
+      
+    } else {      
       this.activityId = null;
       this.activityName = null;
+    }  
+    
+  }
+    
+  public void enterActivityInstance() {
+    
+    final ExecutionEntity parent = getParent();
+    
+    if (parent == null || parent.getActivity() != getActivity()) {
+      // generate new activity instance id
+      activityInstanceId = generateActivityInstanceId(getActivity().getId());    
+      if(log.isLoggable(Level.FINE)) {
+        log.log(Level.FINE, toString()+" enters activity instance "+activityInstanceId +"; parent activity instance: "+getParentActivityInstanceId());
+      }
+    } else {
+      activityInstanceId = parent.getActivityInstanceId();  
+      if(log.isLoggable(Level.FINE)) {
+        log.log(Level.FINE, toString()+" starts in activity instance "+activityInstanceId +"; parent activity instance: "+getParentActivityInstanceId());
+      }
     }
   }
   
+  public void leaveActivityInstance() {
+    activityInstanceId = getParentActivityInstanceId();    
+  }
+  
+  public String getParentActivityInstanceId() {
+    
+    final ExecutionEntity parent = getParent();
+    
+    if(isProcessInstance()) {
+      return processInstanceId;
+    } else {
+      if(parent.getActivity().contains(getActivity())) {
+        return parent.getActivityInstanceId();        
+      } else {
+        return parent.getParentActivityInstanceId();        
+      }
+    }
+  }
+  
+  /**
+   * generates an activity instance id
+   */
+  protected String generateActivityInstanceId(String activityId) {
+    
+    String nextId = Context.getProcessEngineConfiguration()
+      .getIdGenerator()
+      .getNextId();
+    
+    String compositeId = activityId+":"+nextId;
+    if(compositeId.length()>64) {
+      return String.valueOf(nextId);
+    } else {
+      return compositeId;
+    }
+  }
+  
+  public void setActivityInstanceId(String activityInstanceId) {
+    this.activityInstanceId = activityInstanceId;
+  }
+  
+  public String getActivityInstanceId() {
+    return activityInstanceId;
+  }
+
   // parent ///////////////////////////////////////////////////////////////////
   
   /** ensures initialization and returns the parent */
@@ -853,6 +934,9 @@ public class ExecutionEntity extends VariableScopeImpl implements ActivityExecut
     // remove all jobs
     removeJobs();
     
+    // remove all incidents
+    removeIncidents();
+    
     // remove all event subscriptions for this scope, if the scope has event subscriptions:
     removeEventSubscriptions();
     
@@ -915,7 +999,17 @@ public class ExecutionEntity extends VariableScopeImpl implements ActivityExecut
       }
     }
   }
-
+  
+  private void removeIncidents() {
+    for (IncidentEntity incident: getIncidents()) {
+      if (replacedBy!=null) {
+        incident.setExecution((ExecutionEntity) replacedBy);
+      } else {
+        incident.delete();
+      }
+    }
+  }
+  
   private void removeTasks(String reason) {
     if(reason == null) {
       reason = TaskEntity.DELETE_REASON_DELETED;
@@ -1021,6 +1115,9 @@ public class ExecutionEntity extends VariableScopeImpl implements ActivityExecut
         historicActivityInstance.setExecutionId(replacedBy.getId());
       }
     }
+    
+    // set replaced by activity to our activity id
+    replacedBy.setActivityInstanceId(activityInstanceId);
   }
 
   // variables ////////////////////////////////////////////////////////////////
@@ -1068,6 +1165,7 @@ public class ExecutionEntity extends VariableScopeImpl implements ActivityExecut
     persistentState.put("processDefinitionId", this.processDefinitionId);
     persistentState.put("businessKey", businessKey);
     persistentState.put("activityId", this.activityId);
+    persistentState.put("activityInstanceId", this.activityInstanceId);
     persistentState.put("isActive", this.isActive);
     persistentState.put("isConcurrent", this.isConcurrent);
     persistentState.put("isScope", this.isScope);
@@ -1078,7 +1176,7 @@ public class ExecutionEntity extends VariableScopeImpl implements ActivityExecut
       persistentState.put("forcedUpdate", Boolean.TRUE);
     }
     persistentState.put("suspensionState", this.suspensionState);
-    persistentState.put("cachedEntityState", this.cachedEntityState);
+    persistentState.put("cachedEntityState", getCachedEntityState());
     return persistentState;
   }
   
@@ -1204,6 +1302,44 @@ public class ExecutionEntity extends VariableScopeImpl implements ActivityExecut
     getJobsInternal().remove(job);
   }
   
+  // referenced incidents entities //////////////////////////////////////////////
+  
+  @SuppressWarnings({ "unchecked", "rawtypes" })
+  protected void ensureIncidentsInitialized() {
+    if(incidents == null) {    
+      incidents = (List)Context.getCommandContext()
+        .getIncidentManager()
+        .findIncidentsByExecution(id);
+    }    
+  }
+  
+  protected List<IncidentEntity> getIncidentsInternal() {
+    ensureIncidentsInitialized();
+    return incidents;
+  }
+  
+  public List<IncidentEntity> getIncidents() {
+    return new ArrayList<IncidentEntity>(getIncidentsInternal());
+  }
+  
+  public void addIncident(IncidentEntity incident) {
+    getIncidentsInternal().add(incident);
+  }
+  
+  public void removeIncident(IncidentEntity incident) {
+    getIncidentsInternal().remove(incident);
+  }
+  
+  public IncidentEntity getIncidentByCauseIncidentId(String causeIncidentId) {
+    for (IncidentEntity incident : getIncidents()) {
+      if (incident.getCauseIncidentId() != null &&
+          incident.getCauseIncidentId().equals(causeIncidentId)) {
+        return incident;
+      }
+    }
+    return null;
+  }
+  
   // referenced task entities ///////////////////////////////////////////////////
   
   @SuppressWarnings({ "unchecked", "rawtypes" })
@@ -1250,6 +1386,9 @@ public class ExecutionEntity extends VariableScopeImpl implements ActivityExecut
     if(eventSubscriptions == null && !BitMaskUtil.isBitOn(cachedEntityState, EVENT_SUBSCRIPTIONS_STATE_BIT)) {
       eventSubscriptions = new ArrayList<EventSubscriptionEntity>();
     }
+    if(incidents == null && !BitMaskUtil.isBitOn(cachedEntityState, INCIDENT_STATE_BIT)) {
+      incidents = new ArrayList<IncidentEntity>();
+    }
   }
     
   public int getCachedEntityState() {
@@ -1260,6 +1399,7 @@ public class ExecutionEntity extends VariableScopeImpl implements ActivityExecut
     cachedEntityState = BitMaskUtil.setBit(cachedEntityState, TASKS_STATE_BIT, (tasks == null || tasks.size() > 0));
     cachedEntityState = BitMaskUtil.setBit(cachedEntityState, EVENT_SUBSCRIPTIONS_STATE_BIT, (eventSubscriptions == null || eventSubscriptions.size() > 0));
     cachedEntityState = BitMaskUtil.setBit(cachedEntityState, JOBS_STATE_BIT, (jobs == null || jobs.size() > 0));
+    cachedEntityState = BitMaskUtil.setBit(cachedEntityState, INCIDENT_STATE_BIT, (incidents == null || incidents.size() > 0));
     
     return cachedEntityState;
   }

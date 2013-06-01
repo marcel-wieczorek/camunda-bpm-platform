@@ -15,8 +15,10 @@ package org.camunda.bpm.engine.rest;
 import java.util.List;
 
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -26,9 +28,12 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.UriInfo;
 
 import org.camunda.bpm.engine.rest.dto.CountResultDto;
+import org.camunda.bpm.engine.rest.dto.DeleteEngineEntityDto;
+import org.camunda.bpm.engine.rest.dto.PatchVariablesDto;
 import org.camunda.bpm.engine.rest.dto.runtime.ProcessInstanceDto;
 import org.camunda.bpm.engine.rest.dto.runtime.ProcessInstanceQueryDto;
 import org.camunda.bpm.engine.rest.dto.runtime.VariableListDto;
+import org.camunda.bpm.engine.rest.dto.runtime.VariableValueDto;
 import org.camunda.bpm.engine.runtime.ProcessInstanceQuery;
 
 @Path(ProcessInstanceRestService.PATH)
@@ -39,7 +44,13 @@ public interface ProcessInstanceRestService {
   
   @GET
   @Path("/{id}")
+  @Produces(MediaType.APPLICATION_JSON)
   ProcessInstanceDto getProcessInstance(@PathParam("id") String processInstanceId);
+  
+  @DELETE
+  @Path("/{id}")
+  @Consumes(MediaType.APPLICATION_JSON)
+  void deleteProcessInstance(@PathParam("id") String processInstanceId, DeleteEngineEntityDto dto);
   
   /**
    * Exposes the {@link ProcessInstanceQuery} interface as a REST service.
@@ -50,6 +61,7 @@ public interface ProcessInstanceRestService {
    * @return
    */
   @GET
+  @Produces(MediaType.APPLICATION_JSON)
   List<ProcessInstanceDto> getProcessInstances(@Context UriInfo uriInfo,
       @QueryParam("firstResult") Integer firstResult,
       @QueryParam("maxResults") Integer maxResults);
@@ -66,20 +78,43 @@ public interface ProcessInstanceRestService {
    */
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
   List<ProcessInstanceDto> queryProcessInstances(ProcessInstanceQueryDto query,
       @QueryParam("firstResult") Integer firstResult,
       @QueryParam("maxResults") Integer maxResults);
 
   @GET
   @Path("/count")
+  @Produces(MediaType.APPLICATION_JSON)
   CountResultDto getProcessInstancesCount(@Context UriInfo uriInfo);
   
   @POST
   @Path("/count")
   @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
   CountResultDto queryProcessInstancesCount(ProcessInstanceQueryDto query);
 
   @GET
   @Path("/{id}/variables")
+  @Produces(MediaType.APPLICATION_JSON)
   VariableListDto getVariables(@PathParam("id") String processInstanceId);
+  
+  @GET
+  @Path("/{id}/variables/{varId}")
+  @Produces(MediaType.APPLICATION_JSON)
+  VariableValueDto getVariable(@PathParam("id") String processInstanceId, @PathParam("varId") String variableName);
+  
+  @PUT
+  @Path("/{id}/variables/{varId}")
+  @Consumes(MediaType.APPLICATION_JSON)
+  void putVariable(@PathParam("id") String processInstanceId, @PathParam("varId") String variableName, VariableValueDto variable);
+  
+  @DELETE
+  @Path("/{id}/variables/{varId}")
+  void deleteVariable(@PathParam("id") String processInstanceId, @PathParam("varId") String variableName);
+  
+  @POST
+  @Path("/{id}/variables")
+  @Consumes(MediaType.APPLICATION_JSON)
+  void modifyVariables(@PathParam("id") String processInstanceId, PatchVariablesDto patch);
 }
