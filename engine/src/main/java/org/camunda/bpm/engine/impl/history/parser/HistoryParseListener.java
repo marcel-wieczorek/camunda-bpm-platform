@@ -59,7 +59,7 @@ public class HistoryParseListener implements BpmnParseListener {
   protected ExecutionListener PROCESS_INSTANCE_END_LISTENER;
 
   protected ExecutionListener ACTIVITY_INSTANCE_START_LISTENER;
-  protected ExecutionListener ACTIVITI_INSTANCE_END_LISTENER;
+  protected ExecutionListener ACTIVITY_INSTANCE_END_LISTENER;
 
   protected TaskListener USER_TASK_ASSIGNMENT_HANDLER;
   protected TaskListener USER_TASK_ID_HANDLER;
@@ -77,7 +77,7 @@ public class HistoryParseListener implements BpmnParseListener {
     PROCESS_INSTANCE_END_LISTENER = new ExecutionListenerHistoryAdapter(factory.getHistoricProcessInstanceEndEventProducer());
     
     ACTIVITY_INSTANCE_START_LISTENER = new ExecutionListenerHistoryAdapter(factory.getHistoricActivityInstanceStartEventProducer());
-    ACTIVITI_INSTANCE_END_LISTENER = new ExecutionListenerHistoryAdapter(factory.getHistoricActivityInstanceEndEventProducer());
+    ACTIVITY_INSTANCE_END_LISTENER = new ExecutionListenerHistoryAdapter(factory.getHistoricActivityInstanceEndEventProducer());
     
     USER_TASK_ASSIGNMENT_HANDLER = new HistoricUserTaskAssignmentListener(factory.getHistoricActivityInstanceUpdateEventProducer());
     USER_TASK_ID_HANDLER = USER_TASK_ASSIGNMENT_HANDLER;
@@ -141,7 +141,7 @@ public class HistoryParseListener implements BpmnParseListener {
 
   public void parseStartEvent(Element startEventElement, ScopeImpl scope, ActivityImpl activity) {
     if (activityHistoryEnabled(activity, historyLevel)) {
-      activity.addExecutionListener(org.camunda.bpm.engine.impl.pvm.PvmEvent.EVENTNAME_END, ACTIVITI_INSTANCE_END_LISTENER);
+      activity.addExecutionListener(org.camunda.bpm.engine.impl.pvm.PvmEvent.EVENTNAME_END, ACTIVITY_INSTANCE_END_LISTENER);
     }
   }
 
@@ -220,7 +220,7 @@ public class HistoryParseListener implements BpmnParseListener {
   protected void addActivityHandlers(ActivityImpl activity) {
     if (activityHistoryEnabled(activity, historyLevel)) {
       activity.addExecutionListener(PvmEvent.EVENTNAME_START, ACTIVITY_INSTANCE_START_LISTENER, 0);
-      activity.addExecutionListener(PvmEvent.EVENTNAME_END, ACTIVITI_INSTANCE_END_LISTENER);
+      activity.addExecutionListener(PvmEvent.EVENTNAME_END, ACTIVITY_INSTANCE_END_LISTENER);
     }
   }
 

@@ -24,14 +24,11 @@ create table ACT_HI_ACTINST (
     ACT_INST_ID_ varchar(255) not null,
     PARENT_ACT_INST_ID_ varchar(255) not null,
     EVENT_TYPE_ varchar(255) not null,
-    
     TASK_ID_ varchar(64),
     CALL_PROC_INST_ID_ varchar(64),
     ASSIGNEE_ varchar(64),
-    
     primary key (ID_)
 );
-
 
 create table ACT_HI_TASKINST (
     ID_ varchar(64) not null,
@@ -39,6 +36,7 @@ create table ACT_HI_TASKINST (
     TASK_DEF_KEY_ varchar(255),
     PROC_INST_ID_ varchar(64),
     EXECUTION_ID_ varchar(64),
+    TIMESTAMP_ timestamp not null,
     NAME_ varchar(255),
     PARENT_TASK_ID_ varchar(64),
     DESCRIPTION_ varchar(4000),
@@ -46,7 +44,7 @@ create table ACT_HI_TASKINST (
     ASSIGNEE_ varchar(255),
     START_TIME_ timestamp not null,
     END_TIME_ timestamp,
-    DURATION_ bigint,
+    EVENT_TYPE_ varchar(255) not null,
     DELETE_REASON_ varchar(4000),
     PRIORITY_ integer,
     DUE_DATE_ timestamp,

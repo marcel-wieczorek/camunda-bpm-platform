@@ -26,6 +26,8 @@ public class HistoricScopeInstanceEventEntity extends HistoryEvent {
   public static final String ACTIVITY_EVENT_TYPE_END = "end";
   /** fired when an activity instance is updated. */
   public static final String ACTIVITY_EVENT_TYPE_UPDATE = "update";
+  /** fired when an activity instance is completed. */
+  public static final String ACTIVITY_EVENT_TYPE_COMPLETE = "complete";
 
   /** the id of the activity */
   protected String activityId;
@@ -47,6 +49,8 @@ public class HistoricScopeInstanceEventEntity extends HistoryEvent {
    * 
    * @see #ACTIVITY_EVENT_TYPE_START
    * @see #ACTIVITY_EVENT_TYPE_END
+   * @see #ACTIVITY_EVENT_TYPE_UPDATE
+   * @see #ACTIVITY_EVENT_TYPE_COMPLETE
    * 
    * */
   protected String eventType;

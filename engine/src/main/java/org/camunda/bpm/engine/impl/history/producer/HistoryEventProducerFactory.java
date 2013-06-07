@@ -15,6 +15,7 @@ package org.camunda.bpm.engine.impl.history.producer;
 import org.camunda.bpm.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.camunda.bpm.engine.impl.history.event.HistoricActivityInstanceEventEntity;
 import org.camunda.bpm.engine.impl.history.event.HistoricProcessInstanceEventEntity;
+import org.camunda.bpm.engine.impl.history.event.HistoricScopeInstanceEventEntity;
 import org.camunda.bpm.engine.impl.history.event.HistoryEvent;
 
 /**
@@ -64,7 +65,7 @@ public class HistoryEventProducerFactory {
    *         instance is <b>started</b>.
    */
   public HistoryEventProducer getHistoricActivityInstanceStartEventProducer() {
-    return new HistoricActivityInstanceEventProducer(HistoricActivityInstanceEventEntity.ACTIVITY_EVENT_TYPE_START);
+    return new HistoricActivityInstanceEventProducer(HistoricScopeInstanceEventEntity.ACTIVITY_EVENT_TYPE_START);
   }
 
   /**
@@ -73,7 +74,7 @@ public class HistoryEventProducerFactory {
    *         instance is <b>ended</b>.
    */
   public HistoryEventProducer getHistoricActivityInstanceEndEventProducer() {
-    return new HistoricActivityInstanceEventProducer(HistoricActivityInstanceEventEntity.ACTIVITY_EVENT_TYPE_END);
+    return new HistoricActivityInstanceEventProducer(HistoricScopeInstanceEventEntity.ACTIVITY_EVENT_TYPE_END);
   }
 
   /**
@@ -82,10 +83,37 @@ public class HistoryEventProducerFactory {
    *         instance is <b>updated</b>.
    */
   public HistoryEventProducer getHistoricActivityInstanceUpdateEventProducer() {
-    return new HistoricActivityInstanceEventProducer(HistoricActivityInstanceEventEntity.ACTIVITY_EVENT_TYPE_UPDATE);
+    return new HistoricActivityInstanceEventProducer(HistoricScopeInstanceEventEntity.ACTIVITY_EVENT_TYPE_UPDATE);
   }
 
   // tasks instance ///////////////////////////////
+  
+  /**
+   * @return the {@link HistoryEventProducer} to be invoked for producing the
+   *         {@link HistoricTaskInstanceEventProducer} when an activity
+   *         instance is <b>started</b>.
+   */
+  public HistoryEventProducer getHistoricTaskInstanceStartEventProducer() {
+    return new HistoricTaskInstanceEventProducer(HistoricScopeInstanceEventEntity.ACTIVITY_EVENT_TYPE_START);
+  }
+  
+  /**
+   * @return the {@link HistoryEventProducer} to be invoked for producing the
+   *         {@link HistoricTaskInstanceEventProducer} when an activity
+   *         instance is <b>ended</b>.
+   */
+  public HistoryEventProducer getHistoricTaskInstanceEndEventProducer() {
+    return new HistoricTaskInstanceEventProducer(HistoricScopeInstanceEventEntity.ACTIVITY_EVENT_TYPE_END);
+  }
+  
+  /**
+   * @return the {@link HistoryEventProducer} to be invoked for producing the
+   *         {@link HistoricTaskInstanceEventProducer} when an activity
+   *         instance is <b>updated</b>.
+   */
+  public HistoryEventProducer getHistoricTaskInstanceUpdateEventProducer() {
+    return new HistoricTaskInstanceEventProducer(HistoricScopeInstanceEventEntity.ACTIVITY_EVENT_TYPE_UPDATE);
+  }
 
   // variable instance ////////////////////////////
 
